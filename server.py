@@ -8,7 +8,7 @@ from typing import Optional
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Body, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from onvif import ONVIFCamera
 
@@ -34,13 +34,14 @@ CAM_PORT = int(os.getenv("CAM_PORT", "2020"))
 CAM_USER = os.getenv("CAM_USER", "")
 CAM_PASS = os.getenv("CAM_PASS", "")
 
-app = FastAPI(title="Tapo Web View", description="Lightweight WebRTC & PTZ Controller for Tapo C206")
+app = FastAPI(title="Tapo Studio", description="Full-feature WebRTC, PTZ & Camera Hardware Controller for Tapo C206")
 
 # Global ONVIF cache
 _cam = None
 _ptz = None
 _media = None
 _token = None
+_tapo = None
 _cam_lock = asyncio.Lock()
 
 def get_ptz_service():
@@ -58,10 +59,20 @@ def get_dev_info():
         get_ptz_service()
     return _cam.devicemgmt.GetDeviceInformation()
 
+def get_tapo_client():
+    global _tapo
+    if _tapo is None:
+        import pytapo
+        _tapo = pytapo.Tapo(CAM_IP, CAM_USER, CAM_PASS)
+    return _tapo
+
+
 class MoveRequest(BaseModel):
-    direction: str  # up, down, left, right, home
+    direction: str  # up, down, left, right
     step: Optional[float] = 0.2
 
+
+# --- TELEMETRY & STATUS ---
 @app.get("/api/status")
 async def get_status():
     async with _cam_lock:
@@ -70,6 +81,60 @@ async def get_status():
             status = await asyncio.to_thread(ptz.GetStatus, {'ProfileToken': token})
             dev = await asyncio.to_thread(get_dev_info)
             pos = status.Position.PanTilt if status and status.Position else None
+
+            # Fetch Tapo hardware features
+            def fetch_tapo_features():
+                t = get_tapo_client()
+                feat = {}
+                try:
+                    at = t.getAutoTrackTarget()
+                    feat["auto_track"] = (at.get("enabled") == "on")
+                except Exception:
+                    feat["auto_track"] = False
+
+                try:
+                    pm = t.getPrivacyMode()
+                    feat["privacy_mode"] = (pm.get("enabled") == "on")
+                except Exception:
+                    feat["privacy_mode"] = False
+
+                try:
+                    led = t.getLED()
+                    feat["led"] = (led.get("enabled") == "on")
+                except Exception:
+                    feat["led"] = True
+
+                try:
+                    md = t.getMotionDetection()
+                    feat["motion_detection"] = (md.get("enabled") == "on")
+                except Exception:
+                    feat["motion_detection"] = False
+
+                try:
+                    pd = t.getPersonDetection()
+                    feat["person_detection"] = (pd.get("enabled") == "on")
+                except Exception:
+                    feat["person_detection"] = False
+
+                try:
+                    nv = t.getNightVisionModeConfig()
+                    mode = nv.get("image", {}).get("switch", {}).get("night_vision_mode", "inf_night_vision")
+                    feat["night_vision_mode"] = mode
+                    feat["spotlight"] = (mode == "wtl_night_vision")
+                except Exception:
+                    feat["night_vision_mode"] = "inf_night_vision"
+                    feat["spotlight"] = False
+
+                try:
+                    wl = t.getWhitelampConfig()
+                    feat["spotlight_intensity"] = int(wl.get("wtl_intensity_level", 3))
+                except Exception:
+                    feat["spotlight_intensity"] = 3
+
+                return feat
+
+            features = await asyncio.to_thread(fetch_tapo_features)
+
             return {
                 "online": True,
                 "model": getattr(dev, "Model", "Tapo C206"),
@@ -79,11 +144,14 @@ async def get_status():
                 "position": {
                     "pan": round(pos.x, 3) if pos else 0.0,
                     "tilt": round(pos.y, 3) if pos else 0.0
-                }
+                },
+                "features": features
             }
         except Exception as e:
             return {"online": False, "error": str(e)}
 
+
+# --- PTZ CONTROLS ---
 @app.post("/api/ptz/move")
 async def ptz_move(req: MoveRequest):
     async with _cam_lock:
@@ -114,6 +182,7 @@ async def ptz_move(req: MoveRequest):
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/ptz/flip180")
 async def ptz_flip180():
     async with _cam_lock:
@@ -122,7 +191,6 @@ async def ptz_flip180():
             def do_flip():
                 status = ptz.GetStatus({'ProfileToken': token})
                 cur_x = status.Position.PanTilt.x if status.Position and status.Position.PanTilt else 0.0
-                # Pan range is [-1.0, 1.0]. If cur_x > 0 flip back (-1.0), else flip forward (+1.0)
                 flip_delta = -1.0 if cur_x > 0 else 1.0
 
                 m_req = ptz.create_type('RelativeMove')
@@ -134,6 +202,7 @@ async def ptz_flip180():
             return {"success": True, "action": "flip180"}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/ptz/absolute")
 async def ptz_absolute(pan: float = Body(..., embed=True), tilt: float = Body(..., embed=True)):
@@ -151,44 +220,139 @@ async def ptz_absolute(pan: float = Body(..., embed=True), tilt: float = Body(..
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+
+# --- HARDWARE FEATURES (AUTOTRACK, SPOTLIGHT, NIGHT VISION, PRIVACY, LED) ---
+
+@app.post("/api/features/auto_track")
+async def toggle_auto_track(enabled: bool = Body(..., embed=True)):
+    try:
+        t = get_tapo_client()
+        res = await asyncio.to_thread(t.setAutoTrackTarget, enabled)
+        return {"success": True, "auto_track": enabled, "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AutoTrack error: {e}")
+
+
+@app.post("/api/features/night_vision")
+async def set_night_vision_mode(mode: str = Body(..., embed=True)):
+    # mode: 'infrared' -> inf_night_vision, 'spotlight' -> wtl_night_vision, 'smart' -> md_night_vision
+    mode_map = {
+        "infrared": "inf_night_vision",
+        "spotlight": "wtl_night_vision",
+        "smart": "md_night_vision",
+        "inf_night_vision": "inf_night_vision",
+        "wtl_night_vision": "wtl_night_vision",
+        "md_night_vision": "md_night_vision"
+    }
+    target = mode_map.get(mode.lower())
+    if not target:
+        raise HTTPException(status_code=400, detail="Invalid mode. Choose infrared, spotlight, or smart.")
+
+    try:
+        t = get_tapo_client()
+        res = await asyncio.to_thread(t.setNightVisionModeConfig, target)
+        return {"success": True, "night_vision_mode": target, "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Night vision error: {e}")
+
+
+@app.post("/api/features/spotlight")
+async def toggle_spotlight(enabled: bool = Body(..., embed=True)):
+    try:
+        t = get_tapo_client()
+        target = "wtl_night_vision" if enabled else "inf_night_vision"
+        res = await asyncio.to_thread(t.setNightVisionModeConfig, target)
+        return {"success": True, "spotlight": enabled, "night_vision_mode": target, "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Spotlight error: {e}")
+
+
+@app.post("/api/features/spotlight/intensity")
+async def set_spotlight_intensity(level: int = Body(..., embed=True)):
+    level = max(1, min(5, level))
+    try:
+        t = get_tapo_client()
+        res = await asyncio.to_thread(t.setWhitelampConfig, intensityLevel=level)
+        return {"success": True, "intensity": level, "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Spotlight intensity error: {e}")
+
+
+@app.post("/api/features/privacy")
+async def toggle_privacy(enabled: bool = Body(..., embed=True)):
+    try:
+        t = get_tapo_client()
+        res = await asyncio.to_thread(t.setPrivacyMode, enabled)
+        return {"success": True, "privacy_mode": enabled, "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Privacy mode error: {e}")
+
+
+@app.post("/api/features/led")
+async def toggle_led(enabled: bool = Body(..., embed=True)):
+    try:
+        t = get_tapo_client()
+        res = await asyncio.to_thread(t.setLEDEnabled, enabled)
+        return {"success": True, "led": enabled, "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LED error: {e}")
+
+
+@app.post("/api/features/person_detection")
+async def toggle_person_detection(enabled: bool = Body(..., embed=True)):
+    try:
+        t = get_tapo_client()
+        res = await asyncio.to_thread(t.setPersonDetection, enabled)
+        return {"success": True, "person_detection": enabled, "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Person detection error: {e}")
+
+
+@app.post("/api/features/motion_detection")
+async def toggle_motion_detection(enabled: bool = Body(..., embed=True)):
+    try:
+        t = get_tapo_client()
+        res = await asyncio.to_thread(t.setMotionDetection, enabled)
+        return {"success": True, "motion_detection": enabled, "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Motion detection error: {e}")
+
+
+@app.post("/api/features/calibrate")
+async def calibrate_motor():
+    try:
+        t = get_tapo_client()
+        res = await asyncio.to_thread(t.calibrateMotor)
+        return {"success": True, "action": "calibrate", "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Calibration error: {e}")
+
+
+@app.post("/api/features/reboot")
+async def reboot_camera():
+    try:
+        t = get_tapo_client()
+        res = await asyncio.to_thread(t.reboot)
+        return {"success": True, "action": "reboot", "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reboot error: {e}")
+
+
+# Legacy backwards compatibility
 @app.post("/api/light/night_mode")
-async def set_night_mode(mode: str = Body(..., embed=True)):
-    mode_upper = mode.upper()
-    if mode_upper not in ["AUTO", "ON", "OFF"]:
-        raise HTTPException(status_code=400, detail="Mode must be AUTO, ON, or OFF")
-    async with _cam_lock:
-        try:
-            if _cam is None:
-                get_ptz_service()
-            imaging = _cam.create_imaging_service()
-            media = _cam.create_media_service()
-            token = media.GetProfiles()[0].VideoSourceConfiguration.SourceToken
-            def do_set():
-                req = imaging.create_type('SetImagingSettings')
-                req.VideoSourceToken = token
-                req.ImagingSettings = {'IrCutFilter': mode_upper}
-                req.ForcePersistence = True
-                imaging.SetImagingSettings(req)
-            await asyncio.to_thread(do_set)
-            return {"success": True, "night_mode": mode_upper}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+async def legacy_night_mode(mode: str = Body(..., embed=True)):
+    m = mode.lower()
+    if m in ["auto", "smart"]:
+        return await set_night_vision_mode("smart")
+    elif m in ["on", "infrared", "ir"]:
+        return await set_night_vision_mode("infrared")
+    else:
+        return await set_night_vision_mode("spotlight")
 
 @app.post("/api/light/spotlight")
-async def set_spotlight(state: bool = Body(..., embed=True)):
-    # Flashlight control via TP-Link API
-    async with _cam_lock:
-        try:
-            import pytapo
-            cloud_user = os.getenv("CLOUD_USER", CAM_USER)
-            cloud_pass = os.getenv("CLOUD_PASS", CAM_PASS)
-            def do_spotlight():
-                t = pytapo.Tapo(CAM_IP, cloud_user, cloud_pass)
-                return t.setForceWhitelampState(state)
-            res = await asyncio.to_thread(do_spotlight)
-            return {"success": True, "spotlight": state, "result": res}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Spotlight API: {e}")
+async def legacy_spotlight(state: bool = Body(..., embed=True)):
+    return await toggle_spotlight(state)
+
 
 # --- SNAPSHOTS ---
 @app.post("/api/snapshot")
@@ -215,6 +379,7 @@ async def take_snapshot(src: str = Query("tapo_hd")):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/snapshots")
 async def list_snapshots():
     items = []
@@ -227,6 +392,7 @@ async def list_snapshots():
         })
     return {"snapshots": items}
 
+
 @app.delete("/api/snapshots/{filename}")
 async def delete_snapshot(filename: str):
     file_path = SNAPSHOTS_DIR / filename
@@ -234,6 +400,7 @@ async def delete_snapshot(filename: str):
         file_path.unlink()
         return {"success": True, "deleted": filename}
     raise HTTPException(status_code=404, detail="Snapshot not found")
+
 
 # --- PROXY TO GO2RTC WEBRTC / STREAMS ---
 @app.post("/api/webrtc")
@@ -246,6 +413,7 @@ async def proxy_webrtc(src: str = Query("tapo_hd"), offer: str = Body(..., media
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"WebRTC proxy error: {e}")
 
+
 @app.get("/api/frame.jpeg")
 async def proxy_frame(src: str = Query("tapo_hd")):
     try:
@@ -255,6 +423,7 @@ async def proxy_frame(src: str = Query("tapo_hd")):
             return Response(content=resp.content, status_code=resp.status_code, media_type="image/jpeg")
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
+
 
 # Mount static files and snapshot storage
 app.mount("/snapshots", StaticFiles(directory=str(SNAPSHOTS_DIR)), name="snapshots")

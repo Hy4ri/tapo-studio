@@ -3,20 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Tapo Studio</title>
+  <title>Tapo Studio - C206 Cockpit</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0d0f12;
-      --card-bg: #161a20;
-      --card-border: #262c36;
+      --bg: #090b0e;
+      --card-bg: #13171f;
+      --card-border: #212836;
       --accent: #3b82f6;
       --accent-hover: #2563eb;
+      --accent-glow: rgba(59, 130, 246, 0.25);
       --text: #f3f4f6;
-      --text-muted: #9ca3af;
+      --text-muted: #8b949e;
       --danger: #ef4444;
+      --danger-glow: rgba(239, 68, 68, 0.25);
+      --warning: #f59e0b;
       --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.25);
     }
 
     * {
@@ -44,16 +48,20 @@
       padding: 12px 20px;
       background: var(--card-bg);
       border-bottom: 1px solid var(--card-border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(8px);
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .brand h1 {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       font-weight: 700;
       letter-spacing: -0.02em;
     }
@@ -67,7 +75,8 @@
       border-radius: 9999px;
       background: rgba(16, 185, 129, 0.15);
       color: var(--success);
-      font-weight: 500;
+      font-weight: 600;
+      letter-spacing: 0.05em;
     }
 
     .status-dot {
@@ -78,10 +87,49 @@
       box-shadow: 0 0 8px var(--success);
     }
 
+    .top-chips {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: #1a202c;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .chip.active {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+    }
+
+    .chip.active.success {
+      border-color: var(--success);
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+    }
+
+    .chip.active.warning {
+      border-color: var(--warning);
+      background: rgba(245, 158, 11, 0.15);
+      color: #fde68a;
+    }
+
     .main-layout {
       display: flex;
       flex-direction: column;
-      max-width: 1200px;
+      max-width: 1280px;
       width: 100%;
       margin: 0 auto;
       padding: 16px;
@@ -89,16 +137,21 @@
       flex: 1;
     }
 
-    @media (min-width: 900px) {
+    @media (min-width: 960px) {
       .main-layout {
         flex-direction: row;
         align-items: flex-start;
       }
       .video-column {
-        flex: 1.8;
+        flex: 1.7;
+        position: sticky;
+        top: 65px;
       }
       .controls-column {
         flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
       }
     }
 
@@ -113,7 +166,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.6);
     }
 
     video {
@@ -135,13 +188,14 @@
     }
 
     .hud-tag {
-      background: rgba(0, 0, 0, 0.65);
+      background: rgba(10, 12, 16, 0.75);
       backdrop-filter: blur(8px);
       padding: 4px 8px;
       border-radius: 6px;
       font-size: 0.75rem;
       font-family: 'JetBrains Mono', monospace;
       color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .video-controls-bar {
@@ -158,13 +212,14 @@
       border: 1px solid var(--card-border);
       border-radius: 8px;
       padding: 3px;
+      gap: 2px;
     }
 
     .segmented-control button {
       background: transparent;
       border: none;
       color: var(--text-muted);
-      padding: 5px 12px;
+      padding: 6px 12px;
       font-size: 0.8rem;
       font-weight: 600;
       border-radius: 6px;
@@ -172,9 +227,14 @@
       transition: all 0.15s;
     }
 
+    .segmented-control button:hover {
+      color: var(--text);
+    }
+
     .segmented-control button.active {
       background: var(--accent);
       color: #fff;
+      box-shadow: 0 2px 8px var(--accent-glow);
     }
 
     /* Cards */
@@ -183,16 +243,18 @@
       border: 1px solid var(--card-border);
       border-radius: 12px;
       padding: 16px;
-      margin-bottom: 16px;
     }
 
     .card h2 {
-      font-size: 0.95rem;
-      font-weight: 600;
-      margin-bottom: 14px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 12px;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     /* D-Pad Controller */
@@ -200,23 +262,22 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
-      margin: 10px 0;
+      margin: 8px 0;
     }
 
     .dpad-grid {
       display: grid;
-      grid-template-columns: repeat(3, 56px);
-      grid-template-rows: repeat(3, 56px);
+      grid-template-columns: repeat(3, 58px);
+      grid-template-rows: repeat(3, 58px);
       gap: 8px;
     }
 
     .ptz-btn {
-      background: #202632;
-      border: 1px solid #2d3644;
+      background: #1c222e;
+      border: 1px solid #2a3344;
       border-radius: 10px;
       color: var(--text);
-      font-size: 1.2rem;
+      font-size: 1.25rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -232,11 +293,12 @@
     }
 
     .ptz-btn.center-btn {
-      background: rgba(59, 130, 246, 0.15);
+      background: rgba(59, 130, 246, 0.12);
       border-color: rgba(59, 130, 246, 0.3);
       color: var(--accent);
       font-size: 0.8rem;
       font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
     }
 
     .ptz-btn.center-btn:active {
@@ -244,6 +306,7 @@
       color: #fff;
     }
 
+    /* Buttons */
     .action-btn {
       display: flex;
       align-items: center;
@@ -255,10 +318,10 @@
       border: none;
       padding: 10px 16px;
       border-radius: 8px;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: all 0.15s;
     }
 
     .action-btn:hover {
@@ -270,13 +333,89 @@
     }
 
     .btn-secondary {
-      background: #202632;
-      border: 1px solid #2d3644;
+      background: #1c222e;
+      border: 1px solid #2a3344;
       color: var(--text);
     }
 
     .btn-secondary:hover {
-      background: #2d3644;
+      background: #252e3e;
+    }
+
+    .btn-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: #181e28;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-toggle:hover {
+      border-color: #3b465c;
+    }
+
+    .btn-toggle.active {
+      background: rgba(59, 130, 246, 0.12);
+      border-color: var(--accent);
+      color: #93c5fd;
+    }
+
+    .btn-toggle.active.warning {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: var(--warning);
+      color: #fde68a;
+    }
+
+    .btn-toggle.active.danger {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: var(--danger);
+      color: #fca5a5;
+    }
+
+    .switch-indicator {
+      width: 34px;
+      height: 18px;
+      background: #2d3648;
+      border-radius: 9999px;
+      position: relative;
+      transition: background 0.2s;
+    }
+
+    .switch-indicator::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      background: #9ca3af;
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .btn-toggle.active .switch-indicator {
+      background: var(--accent);
+    }
+
+    .btn-toggle.active.warning .switch-indicator {
+      background: var(--warning);
+    }
+
+    .btn-toggle.active.danger .switch-indicator {
+      background: var(--danger);
+    }
+
+    .btn-toggle.active .switch-indicator::after {
+      transform: translateX(16px);
+      background: #fff;
     }
 
     .slider-row {
@@ -284,7 +423,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       color: var(--text-muted);
       margin-top: 10px;
     }
@@ -299,7 +438,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
       gap: 8px;
-      max-height: 240px;
+      max-height: 220px;
       overflow-y: auto;
       padding-right: 4px;
     }
@@ -346,8 +485,8 @@
       display: flex;
       justify-content: space-between;
       padding: 6px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      font-size: 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.8rem;
     }
 
     .telemetry-row:last-child {
@@ -368,14 +507,14 @@
       position: fixed;
       bottom: 24px;
       right: 24px;
-      background: rgba(22, 26, 32, 0.95);
+      background: rgba(19, 23, 31, 0.95);
       border: 1px solid var(--card-border);
       color: #fff;
       padding: 10px 16px;
       border-radius: 8px;
       font-size: 0.85rem;
       backdrop-filter: blur(10px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
       opacity: 0;
       transform: translateY(10px);
       transition: all 0.25s;
@@ -397,19 +536,32 @@
         <circle cx="12" cy="13" r="4"></circle>
       </svg>
       <h1>Tapo Studio</h1>
-      <span class="status-badge"><span class="status-dot"></span> LIVE</span>
+      <span class="status-badge"><span class="status-dot"></span> C206 LIVE</span>
     </div>
-    <div style="font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; color: var(--text-muted);" id="cam-ip">
-      192.168.1.53
+    
+    <div class="top-chips">
+      <div class="chip" id="chip-track" onclick="toggleAutoTrack()">
+        <span>🎯 Auto-Track</span>
+      </div>
+      <div class="chip" id="chip-spotlight" onclick="toggleSpotlight()">
+        <span>💡 Spotlight</span>
+      </div>
+      <div class="chip" id="chip-privacy" onclick="togglePrivacy()">
+        <span>🔒 Privacy</span>
+      </div>
+      <span style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); margin-left: 6px;" id="cam-ip">
+        192.168.1.53
+      </span>
     </div>
   </header>
 
   <div class="main-layout">
-    <!-- Left: Video Stream -->
+    <!-- Left: Video Stream & Snaps -->
     <div class="video-column">
       <div class="video-card">
         <div class="video-overlay">
-          <div class="hud-tag" id="hud-quality">STREAM: HD</div>
+          <div class="hud-tag" id="hud-quality">STREAM: HD (2K)</div>
+          <div class="hud-tag" id="hud-mode">MODE: IR STEALTH</div>
           <div class="hud-tag" id="hud-pos">PAN: 0.0 | TILT: 0.0</div>
         </div>
         <video id="video-player" autoplay playsinline muted></video>
@@ -443,8 +595,10 @@
       </div>
     </div>
 
-    <!-- Right: Motor & Telemetry Controls -->
+    <!-- Right: Motor, Hardware, Lighting, AI Controls -->
     <div class="controls-column">
+      
+      <!-- PTZ Motor Control -->
       <div class="card">
         <h2>PTZ Motor Control</h2>
         <div class="dpad-container">
@@ -469,30 +623,89 @@
           <span id="step-label" style="font-family: monospace;">0.2</span>
         </div>
 
-        <div style="margin-top: 14px; display: flex; gap: 8px;">
+        <div style="margin-top: 12px; display: flex; gap: 8px;">
           <button class="action-btn btn-secondary" onclick="ptzFlip180()" style="font-size: 0.8rem; flex: 1;">
             🔄 180° Quick Flip
+          </button>
+          <button class="action-btn btn-secondary" onclick="calibrateMotor()" style="font-size: 0.8rem; flex: 1;">
+            🎯 Calibrate
           </button>
         </div>
       </div>
 
-      <!-- Lighting & Night Vision Controls -->
+      <!-- Lighting & Night Vision -->
       <div class="card">
-        <h2>Night Vision Mode</h2>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
+        <h2>Night Vision & Spotlight</h2>
+        
+        <div style="display: flex; flex-direction: column; gap: 12px;">
           <div>
-            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">IR Cut Filter</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600;">NIGHT VISION PROFILE</span>
             <div class="segmented-control" style="width: 100%; display: flex;">
-              <button id="nv-auto" class="active" onclick="setNightMode('AUTO')" style="flex: 1;">⚡ Auto</button>
-              <button id="nv-on" onclick="setNightMode('ON')" style="flex: 1;">🌙 IR Night</button>
-              <button id="nv-off" onclick="setNightMode('OFF')" style="flex: 1;">☀️ Day</button>
+              <button id="nv-ir" class="active" onclick="setNightVision('infrared')" style="flex: 1;">🌙 IR Stealth</button>
+              <button id="nv-smart" onclick="setNightVision('smart')" style="flex: 1;">⚡ Smart Auto</button>
+              <button id="nv-color" onclick="setNightVision('spotlight')" style="flex: 1;">☀️ Full Color</button>
             </div>
+          </div>
+
+          <button class="btn-toggle warning" id="btn-spotlight" onclick="toggleSpotlight()">
+            <span>💡 White Spotlight (Flashlight)</span>
+            <div class="switch-indicator"></div>
+          </button>
+
+          <div class="slider-row">
+            <span>Spotlight Intensity:</span>
+            <input type="range" id="intensity-slider" min="1" max="5" step="1" value="5" onchange="setSpotlightIntensity(this.value)">
+            <span id="intensity-label" style="font-family: monospace; font-weight: 600;">5</span>
           </div>
         </div>
       </div>
 
+      <!-- Autonomous Hardware AI -->
       <div class="card">
-        <h2>Camera Telemetry</h2>
+        <h2>Camera AI & Tracking</h2>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn-toggle" id="btn-track" onclick="toggleAutoTrack()">
+            <span>🎯 Hardware Motion Tracking (Auto-Follow)</span>
+            <div class="switch-indicator"></div>
+          </button>
+
+          <button class="btn-toggle" id="btn-person" onclick="togglePersonDetection()">
+            <span>👤 Smart AI Person Detection</span>
+            <div class="switch-indicator"></div>
+          </button>
+
+          <button class="btn-toggle" id="btn-motion" onclick="toggleMotionDetection()">
+            <span>🏃 Smart Motion Detection</span>
+            <div class="switch-indicator"></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hardware Privacy & System -->
+      <div class="card">
+        <h2>System & Privacy</h2>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn-toggle danger" id="btn-privacy" onclick="togglePrivacy()">
+            <span>🙈 Lens Privacy Mode</span>
+            <div class="switch-indicator"></div>
+          </button>
+
+          <button class="btn-toggle" id="btn-led" onclick="toggleLED()">
+            <span>🟢 Status LED Indicator</span>
+            <div class="switch-indicator"></div>
+          </button>
+
+          <div style="margin-top: 4px;">
+            <button class="action-btn btn-secondary" onclick="rebootCamera()" style="font-size: 0.8rem;">
+              🔄 Reboot Camera
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetry Data -->
+      <div class="card">
+        <h2>Telemetry</h2>
         <div class="telemetry-row">
           <span class="telemetry-label">Model</span>
           <span class="telemetry-val" id="tel-model">Tapo C206</span>
@@ -502,22 +715,19 @@
           <span class="telemetry-val" id="tel-fw">Loading...</span>
         </div>
         <div class="telemetry-row">
-          <span class="telemetry-label">Pan Angle</span>
-          <span class="telemetry-val" id="tel-pan">0.0</span>
+          <span class="telemetry-label">Pan / Tilt Coords</span>
+          <span class="telemetry-val" id="tel-pos">0.0 / 0.0</span>
         </div>
         <div class="telemetry-row">
-          <span class="telemetry-label">Tilt Angle</span>
-          <span class="telemetry-val" id="tel-tilt">0.0</span>
+          <span class="telemetry-label">Tracking Engine</span>
+          <span class="telemetry-val" id="tel-track-status" style="color: var(--success);">Native DSP 30 FPS</span>
         </div>
         <div class="telemetry-row">
-          <span class="telemetry-label">Tracking Mode</span>
-          <span class="telemetry-val" style="color: var(--success);">Camera Hardware DSP</span>
-        </div>
-        <div class="telemetry-row">
-          <span class="telemetry-label">Streaming Engine</span>
-          <span class="telemetry-val" style="color: var(--accent);">go2rtc WebRTC</span>
+          <span class="telemetry-label">Protocols</span>
+          <span class="telemetry-val" style="color: var(--accent);">ONVIF + KLAP + WebRTC</span>
         </div>
       </div>
+
     </div>
   </div>
 
@@ -527,6 +737,16 @@
     let currentStream = 'tapo_hd';
     let pc = null;
     let step = 0.2;
+    let state = {
+      auto_track: false,
+      spotlight: false,
+      privacy_mode: false,
+      led: true,
+      person_detection: true,
+      motion_detection: true,
+      night_vision_mode: 'inf_night_vision',
+      spotlight_intensity: 5
+    };
 
     function toast(msg) {
       const el = document.getElementById('toast');
@@ -575,7 +795,7 @@
           sdp: answerSdp
         }));
       } catch (err) {
-        console.warn('WebRTC error, falling back to frame feed:', err);
+        console.warn('WebRTC error, falling back to frame snapshot:', err);
         video.poster = `/api/frame.jpeg?src=${streamName}&t=${Date.now()}`;
       }
     }
@@ -633,6 +853,211 @@
       }
     }
 
+    async function calibrateMotor() {
+      if (!confirm('Calibrate camera motors? The camera will rotate across both axes.')) return;
+      toast('Calibrating motors...');
+      try {
+        await fetch('/api/features/calibrate', { method: 'POST' });
+        toast('Calibration started');
+      } catch (e) {
+        toast('Calibration failed');
+      }
+    }
+
+    // Hardware Feature Toggles
+    async function toggleAutoTrack() {
+      const next = !state.auto_track;
+      toast(`${next ? 'Enabling' : 'Disabling'} Hardware Tracking...`);
+      try {
+        const res = await fetch('/api/features/auto_track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: next })
+        });
+        if (res.ok) {
+          state.auto_track = next;
+          renderUI();
+          toast(`Hardware Tracking: ${next ? 'ON' : 'OFF'}`);
+        }
+      } catch (e) {
+        toast('Failed to toggle tracking');
+      }
+    }
+
+    async function toggleSpotlight() {
+      const next = !state.spotlight;
+      toast(`${next ? 'Turning ON' : 'Turning OFF'} Spotlight...`);
+      try {
+        const res = await fetch('/api/features/spotlight', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: next })
+        });
+        if (res.ok) {
+          state.spotlight = next;
+          state.night_vision_mode = next ? 'wtl_night_vision' : 'inf_night_vision';
+          renderUI();
+          toast(`Spotlight: ${next ? 'ON' : 'OFF'}`);
+        }
+      } catch (e) {
+        toast('Failed to toggle spotlight');
+      }
+    }
+
+    async function setSpotlightIntensity(val) {
+      val = parseInt(val);
+      document.getElementById('intensity-label').textContent = val;
+      try {
+        await fetch('/api/features/spotlight/intensity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ level: val })
+        });
+        toast(`Spotlight brightness: ${val}`);
+      } catch (e) {
+        toast('Failed to set intensity');
+      }
+    }
+
+    async function setNightVision(mode) {
+      toast(`Setting Night Vision to ${mode}...`);
+      try {
+        const res = await fetch('/api/features/night_vision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          state.night_vision_mode = data.night_vision_mode;
+          state.spotlight = (data.night_vision_mode === 'wtl_night_vision');
+          renderUI();
+          toast(`Night Mode: ${mode}`);
+        }
+      } catch (e) {
+        toast('Failed to set night vision');
+      }
+    }
+
+    async function togglePrivacy() {
+      const next = !state.privacy_mode;
+      toast(`${next ? 'Enabling' : 'Disabling'} Privacy Mode...`);
+      try {
+        const res = await fetch('/api/features/privacy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: next })
+        });
+        if (res.ok) {
+          state.privacy_mode = next;
+          renderUI();
+          toast(`Privacy Mode: ${next ? 'ON' : 'OFF'}`);
+        }
+      } catch (e) {
+        toast('Failed to toggle privacy');
+      }
+    }
+
+    async function toggleLED() {
+      const next = !state.led;
+      try {
+        const res = await fetch('/api/features/led', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: next })
+        });
+        if (res.ok) {
+          state.led = next;
+          renderUI();
+          toast(`Status LED: ${next ? 'ON' : 'OFF'}`);
+        }
+      } catch (e) {
+        toast('Failed to toggle LED');
+      }
+    }
+
+    async function togglePersonDetection() {
+      const next = !state.person_detection;
+      try {
+        const res = await fetch('/api/features/person_detection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: next })
+        });
+        if (res.ok) {
+          state.person_detection = next;
+          renderUI();
+          toast(`Person Detection: ${next ? 'ON' : 'OFF'}`);
+        }
+      } catch (e) {
+        toast('Failed to toggle person detection');
+      }
+    }
+
+    async function toggleMotionDetection() {
+      const next = !state.motion_detection;
+      try {
+        const res = await fetch('/api/features/motion_detection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: next })
+        });
+        if (res.ok) {
+          state.motion_detection = next;
+          renderUI();
+          toast(`Motion Detection: ${next ? 'ON' : 'OFF'}`);
+        }
+      } catch (e) {
+        toast('Failed to toggle motion detection');
+      }
+    }
+
+    async function rebootCamera() {
+      if (!confirm('Reboot the Tapo C206 camera? Live video will disconnect for ~30 seconds.')) return;
+      toast('Rebooting camera...');
+      try {
+        await fetch('/api/features/reboot', { method: 'POST' });
+        toast('Reboot command sent');
+      } catch (e) {
+        toast('Failed to reboot');
+      }
+    }
+
+    // UI State Renderer
+    function renderUI() {
+      // Top chips
+      document.getElementById('chip-track').classList.toggle('active', state.auto_track);
+      document.getElementById('chip-spotlight').classList.toggle('active', state.spotlight);
+      document.getElementById('chip-privacy').classList.toggle('active', state.privacy_mode);
+
+      // Buttons
+      document.getElementById('btn-track').classList.toggle('active', state.auto_track);
+      document.getElementById('btn-spotlight').classList.toggle('active', state.spotlight);
+      document.getElementById('btn-privacy').classList.toggle('active', state.privacy_mode);
+      document.getElementById('btn-led').classList.toggle('active', state.led);
+      document.getElementById('btn-person').classList.toggle('active', state.person_detection);
+      document.getElementById('btn-motion').classList.toggle('active', state.motion_detection);
+
+      // Night mode buttons
+      const isSmart = state.night_vision_mode === 'md_night_vision';
+      const isColor = state.night_vision_mode === 'wtl_night_vision';
+      const isIR = !isSmart && !isColor;
+
+      document.getElementById('nv-ir').classList.toggle('active', isIR);
+      document.getElementById('nv-smart').classList.toggle('active', isSmart);
+      document.getElementById('nv-color').classList.toggle('active', isColor);
+
+      // HUD Mode
+      let hudModeText = 'MODE: IR STEALTH';
+      if (isSmart) hudModeText = 'MODE: SMART AUTO';
+      if (isColor) hudModeText = 'MODE: FULL-COLOR LAMP';
+      document.getElementById('hud-mode').textContent = hudModeText;
+
+      // Intensity
+      document.getElementById('intensity-slider').value = state.spotlight_intensity;
+      document.getElementById('intensity-label').textContent = state.spotlight_intensity;
+    }
+
     // Snapshots
     async function takeSnapshot() {
       toast('Capturing snapshot...');
@@ -683,34 +1108,23 @@
         if (data.online) {
           document.getElementById('tel-model').textContent = data.model;
           document.getElementById('tel-fw').textContent = data.firmware;
-          document.getElementById('tel-pan').textContent = data.position.pan;
-          document.getElementById('tel-tilt').textContent = data.position.tilt;
+          document.getElementById('tel-pos').textContent = `${data.position.pan} / ${data.position.tilt}`;
           document.getElementById('hud-pos').textContent = `PAN: ${data.position.pan} | TILT: ${data.position.tilt}`;
+
+          if (data.features) {
+            state.auto_track = data.features.auto_track;
+            state.privacy_mode = data.features.privacy_mode;
+            state.led = data.features.led;
+            state.person_detection = data.features.person_detection;
+            state.motion_detection = data.features.motion_detection;
+            state.night_vision_mode = data.features.night_vision_mode;
+            state.spotlight = data.features.spotlight;
+            state.spotlight_intensity = data.features.spotlight_intensity || 5;
+            renderUI();
+          }
         }
       } catch (e) {
         console.error('Status error:', e);
-      }
-    }
-
-    // Night Mode
-    async function setNightMode(mode) {
-      toast(`Setting Night Mode to ${mode}...`);
-      try {
-        const res = await fetch('/api/light/night_mode', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode })
-        });
-        if (res.ok) {
-          document.getElementById('nv-auto').classList.toggle('active', mode === 'AUTO');
-          document.getElementById('nv-on').classList.toggle('active', mode === 'ON');
-          document.getElementById('nv-off').classList.toggle('active', mode === 'OFF');
-          toast(`Night Mode: ${mode}`);
-        } else {
-          toast('Night Mode change failed');
-        }
-      } catch (e) {
-        toast('Failed to set night mode');
       }
     }
 
@@ -730,7 +1144,7 @@
     startWebRTC(currentStream);
     updateStatus();
     loadGallery();
-    setInterval(updateStatus, 5000);
+    setInterval(updateStatus, 4000);
   </script>
 </body>
 </html>

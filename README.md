@@ -183,6 +183,78 @@ Once enabled, the camera's internal microcontroller will autonomously steer the 
   }
   ```
 
+### Hardware Features and Controls
+
+- **POST `/api/features/auto_track`**
+  Enables or disables hardware autonomous motion tracking on the camera processor.
+  ```json
+  {
+    "enabled": true | false
+  }
+  ```
+
+- **POST `/api/features/night_vision`**
+  Selects the camera night vision operating profile.
+  ```json
+  {
+    "mode": "infrared" | "smart" | "spotlight"
+  }
+  ```
+
+- **POST `/api/features/spotlight`**
+  Toggles the physical white LED floodlight on or off.
+  ```json
+  {
+    "enabled": true | false
+  }
+  ```
+
+- **POST `/api/features/spotlight/intensity`**
+  Sets the brightness level of the white spotlight (1 to 5).
+  ```json
+  {
+    "level": 5
+  }
+  ```
+
+- **POST `/api/features/privacy`**
+  Enables or disables physical lens privacy mode (tilts down and mutes stream).
+  ```json
+  {
+    "enabled": true | false
+  }
+  ```
+
+- **POST `/api/features/led`**
+  Toggles the front status LED indicator on or off.
+  ```json
+  {
+    "enabled": true | false
+  }
+  ```
+
+- **POST `/api/features/person_detection`**
+  Toggles on-camera neural person detection.
+  ```json
+  {
+    "enabled": true | false
+  }
+  ```
+
+- **POST `/api/features/motion_detection`**
+  Toggles on-camera pixel motion detection.
+  ```json
+  {
+    "enabled": true | false
+  }
+  ```
+
+- **POST `/api/features/calibrate`**
+  Triggers a mechanical recalibration of the pan/tilt stepper motors.
+
+- **POST `/api/features/reboot`**
+  Reboots the camera hardware.
+
 ### Snapshots
 
 - **POST `/api/snapshot?src=tapo_hd`**
