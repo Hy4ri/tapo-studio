@@ -1,0 +1,11 @@
+streams:
+  tapo_hd:
+    - rtsp://${CAM_USER}:${CAM_PASS}@${CAM_IP}:554/stream1
+  tapo_sd:
+    - rtsp://${CAM_USER}:${CAM_PASS}@${CAM_IP}:554/stream2
+
+api:
+  listen: "127.0.0.1:1984"
+
+webrtc:
+  listen: ":8556"

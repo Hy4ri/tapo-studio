@@ -1,0 +1,22 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment & Credentials
+.env
+.env.local
+config/go2rtc.yaml
+
+# Runtime binaries & data
+bin/go2rtc
+snapshots/*.jpg
+snapshots/*.png
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

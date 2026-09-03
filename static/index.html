@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tapo Live View</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0f12;
+      --card-bg: #161a20;
+      --card-border: #262c36;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      font-weight: 500;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .main-layout {
+      display: flex;
+      flex-direction: column;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      gap: 16px;
+      flex: 1;
+    }
+
+    @media (min-width: 900px) {
+      .main-layout {
+        flex-direction: row;
+        align-items: flex-start;
+      }
+      .video-column {
+        flex: 1.8;
+      }
+      .controls-column {
+        flex: 1;
+      }
+    }
+
+    /* Video Player */
+    .video-card {
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      position: relative;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .video-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-tag {
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: #fff;
+    }
+
+    .video-controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      gap: 10px;
+    }
+
+    .segmented-control {
+      display: flex;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .segmented-control button {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 5px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .segmented-control button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* D-Pad Controller */
+    .dpad-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .dpad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 56px);
+      grid-template-rows: repeat(3, 56px);
+      gap: 8px;
+    }
+
+    .ptz-btn {
+      background: #202632;
+      border: 1px solid #2d3644;
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.1s;
+      outline: none;
+    }
+
+    .ptz-btn:active {
+      background: var(--accent);
+      color: #fff;
+      transform: scale(0.94);
+    }
+
+    .ptz-btn.center-btn {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.3);
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .ptz-btn.center-btn:active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .action-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .action-btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      background: #202632;
+      border: 1px solid #2d3644;
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: #2d3644;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 10px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+
+    /* Snapshots Gallery */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .gallery-item {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      cursor: pointer;
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .gallery-item .del-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(239, 68, 68, 0.85);
+      color: #fff;
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .gallery-item:hover .del-btn {
+      opacity: 1;
+    }
+
+    /* Telemetry Data */
+    .telemetry-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.85rem;
+    }
+
+    .telemetry-row:last-child {
+      border-bottom: none;
+    }
+
+    .telemetry-label {
+      color: var(--text-muted);
+    }
+
+    .telemetry-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(22, 26, 32, 0.95);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.25s;
+      pointer-events: none;
+      z-index: 100;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+        <circle cx="12" cy="13" r="4"></circle>
+      </svg>
+      <h1>Tapo Studio</h1>
+      <span class="status-badge"><span class="status-dot"></span> LIVE</span>
+    </div>
+    <div style="font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; color: var(--text-muted);" id="cam-ip">
+      192.168.1.53
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- Left: Video Stream -->
+    <div class="video-column">
+      <div class="video-card">
+        <div class="video-overlay">
+          <div class="hud-tag" id="hud-quality">STREAM: HD</div>
+          <div class="hud-tag" id="hud-ai" style="display: none; color: var(--success);">AI: ACTIVE</div>
+          <div class="hud-tag" id="hud-pos">PAN: 0.0 | TILT: 0.0</div>
+        </div>
+        <video id="video-player" autoplay playsinline muted></video>
+        <canvas id="detection-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 5;"></canvas>
+      </div>
+
+      <div class="video-controls-bar">
+        <div class="segmented-control">
+          <button id="btn-hd" class="active" onclick="switchStream('tapo_hd')">HD</button>
+          <button id="btn-sd" onclick="switchStream('tapo_sd')">SD</button>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button id="btn-ai" class="action-btn btn-secondary" onclick="toggleAI()" style="width: auto; padding: 6px 12px;" title="Real-time Object & Person Detection">
+            🤖 AI Detect
+          </button>
+          <button class="action-btn btn-secondary" onclick="toggleAudio()" style="width: auto; padding: 6px 12px;">
+            <span id="audio-icon">🔇</span>
+          </button>
+          <button class="action-btn btn-secondary" onclick="toggleFullscreen()" style="width: auto; padding: 6px 12px;">
+            ⛶
+          </button>
+          <button class="action-btn" onclick="takeSnapshot()" style="width: auto; padding: 6px 16px;">
+            📸 Snap
+          </button>
+        </div>
+      </div>
+
+      <!-- Snapshots Drawer -->
+      <div class="card" style="margin-top: 16px;">
+        <h2>Captured Snaps</h2>
+        <div class="gallery-grid" id="gallery-container">
+          <p style="color: var(--text-muted); font-size: 0.8rem;">Loading gallery...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Motor & Telemetry Controls -->
+    <div class="controls-column">
+      <div class="card">
+        <h2>PTZ Motor Control</h2>
+        <div class="dpad-container">
+          <div class="dpad-grid">
+            <div></div>
+            <button class="ptz-btn" onclick="ptzMove('up')" title="Up (↑)">▲</button>
+            <div></div>
+
+            <button class="ptz-btn" onclick="ptzMove('left')" title="Left (←)">◀</button>
+            <button class="ptz-btn center-btn" onclick="ptzFlip180()" title="180° Flip">180°</button>
+            <button class="ptz-btn" onclick="ptzMove('right')" title="Right (→)">▶</button>
+
+            <div></div>
+            <button class="ptz-btn" onclick="ptzMove('down')" title="Down (↓)">▼</button>
+            <div></div>
+          </div>
+        </div>
+
+        <div class="slider-row">
+          <span>Step Size:</span>
+          <input type="range" id="step-slider" min="0.05" max="0.5" step="0.05" value="0.2" oninput="updateStepLabel(this.value)">
+          <span id="step-label" style="font-family: monospace;">0.2</span>
+        </div>
+
+        <div style="margin-top: 14px; display: flex; gap: 8px;">
+          <button class="action-btn btn-secondary" onclick="ptzFlip180()" style="font-size: 0.8rem; flex: 1;">
+            🔄 180° Flip
+          </button>
+          <button id="btn-autotrack" class="action-btn btn-secondary" onclick="toggleAutoTrack()" style="font-size: 0.8rem; flex: 1;" title="Automatically track and center on detected person">
+            🎯 Auto-Track: OFF
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Camera Telemetry</h2>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Model</span>
+          <span class="telemetry-val" id="tel-model">Tapo C206</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Firmware</span>
+          <span class="telemetry-val" id="tel-fw">Loading...</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Pan Angle</span>
+          <span class="telemetry-val" id="tel-pan">0.0</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Tilt Angle</span>
+          <span class="telemetry-val" id="tel-tilt">0.0</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Backend Engine</span>
+          <span class="telemetry-val" style="color: var(--success);">go2rtc WebRTC</span>
+        </div>
+      </div>
+
+      <!-- Live AI Detection Entities -->
+      <div class="card" id="ai-card" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h2 style="margin-bottom: 0;">Live Detected Entities</h2>
+          <span id="ai-fps" style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; color: var(--success); font-weight: 600;">0 FPS</span>
+        </div>
+        <div id="detected-tags" style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Initializing neural engine...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">Snapshot captured!</div>
+
+  <script>
+    let currentStream = 'tapo_hd';
+    let pc = null;
+    let step = 0.2;
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2000);
+    }
+
+    function updateStepLabel(val) {
+      step = parseFloat(val);
+      document.getElementById('step-label').textContent = val;
+    }
+
+    // WebRTC connection
+    async function startWebRTC(streamName) {
+      if (pc) {
+        pc.close();
+        pc = null;
+      }
+
+      pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+
+      const video = document.getElementById('video-player');
+      pc.ontrack = (event) => {
+        video.srcObject = event.streams[0];
+      };
+
+      pc.addTransceiver('video', { direction: 'recvonly' });
+      pc.addTransceiver('audio', { direction: 'recvonly' });
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      try {
+        const res = await fetch(`/api/webrtc?src=${streamName}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: offer.sdp
+        });
+        if (!res.ok) throw new Error('WebRTC negotiation failed');
+        const answerSdp = await res.text();
+        await pc.setRemoteDescription(new RTCSessionDescription({
+          type: 'answer',
+          sdp: answerSdp
+        }));
+      } catch (err) {
+        console.warn('WebRTC error, falling back to frame feed:', err);
+        video.poster = `/api/frame.jpeg?src=${streamName}&t=${Date.now()}`;
+      }
+    }
+
+    function switchStream(streamName) {
+      currentStream = streamName;
+      document.getElementById('btn-hd').classList.toggle('active', streamName === 'tapo_hd');
+      document.getElementById('btn-sd').classList.toggle('active', streamName === 'tapo_sd');
+      document.getElementById('hud-quality').textContent = streamName === 'tapo_hd' ? 'STREAM: HD (2K)' : 'STREAM: SD (360p)';
+      startWebRTC(streamName);
+    }
+
+    function toggleAudio() {
+      const video = document.getElementById('video-player');
+      video.muted = !video.muted;
+      document.getElementById('audio-icon').textContent = video.muted ? '🔇' : '🔊';
+    }
+
+    function toggleFullscreen() {
+      const card = document.querySelector('.video-card');
+      if (!document.fullscreenElement) {
+        card.requestFullscreen?.() || card.webkitRequestFullscreen?.();
+      } else {
+        document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+      }
+    }
+
+    // PTZ
+    async function ptzMove(direction) {
+      try {
+        const res = await fetch('/api/ptz/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ direction, step })
+        });
+        if (res.ok) {
+          updateStatus();
+        }
+      } catch (e) {
+        console.error('Move error:', e);
+      }
+    }
+
+    async function ptzFlip180() {
+      toast('Flipping 180° (motor in transit)...');
+      try {
+        const res = await fetch('/api/ptz/flip180', { method: 'POST' });
+        if (res.ok) {
+          setTimeout(updateStatus, 1000);
+          setTimeout(updateStatus, 2500);
+          setTimeout(updateStatus, 4500);
+        }
+      } catch (e) {
+        console.error('Flip error:', e);
+      }
+    }
+
+    // Snapshots
+    async function takeSnapshot() {
+      toast('Capturing snapshot...');
+      try {
+        const res = await fetch(`/api/snapshot?src=${currentStream}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          toast('📸 Snapshot saved!');
+          loadGallery();
+        }
+      } catch (e) {
+        toast('Failed to capture snapshot');
+      }
+    }
+
+    async function loadGallery() {
+      try {
+        const res = await fetch('/api/snapshots');
+        const data = await res.json();
+        const container = document.getElementById('gallery-container');
+        if (!data.snapshots || data.snapshots.length === 0) {
+          container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">No snapshots taken yet.</p>';
+          return;
+        }
+
+        container.innerHTML = data.snapshots.map(s => `
+          <div class="gallery-item" onclick="window.open('${s.url}', '_blank')">
+            <img src="${s.url}" alt="${s.filename}" loading="lazy">
+            <button class="del-btn" onclick="event.stopPropagation(); deleteSnap('${s.filename}')">✕</button>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Gallery load error:', e);
+      }
+    }
+
+    async function deleteSnap(filename) {
+      if (!confirm('Delete snapshot?')) return;
+      await fetch(`/api/snapshots/${filename}`, { method: 'DELETE' });
+      loadGallery();
+    }
+
+    // Telemetry polling
+    async function updateStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        if (data.online) {
+          document.getElementById('tel-model').textContent = data.model;
+          document.getElementById('tel-fw').textContent = data.firmware;
+          document.getElementById('tel-pan').textContent = data.position.pan;
+          document.getElementById('tel-tilt').textContent = data.position.tilt;
+          document.getElementById('hud-pos').textContent = `PAN: ${data.position.pan} | TILT: ${data.position.tilt}`;
+        }
+      } catch (e) {
+        console.error('Status error:', e);
+      }
+    }
+
+    // Keyboard navigation
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+      }
+      if (e.key === 'ArrowUp') ptzMove('up');
+      if (e.key === 'ArrowDown') ptzMove('down');
+      if (e.key === 'ArrowLeft') ptzMove('left');
+      if (e.key === 'ArrowRight') ptzMove('right');
+      if (e.key === ' ') takeSnapshot();
+    });
+
+    // --- AI OBJECT & PERSON DETECTION (Original Fast WebGL Engine) ---
+    let aiEnabled = false;
+    let autoTrackEnabled = false;
+    let isTrackingMoving = false;
+    let lastTrackTime = 0;
+    let cocoModel = null;
+    let isDetecting = false;
+    let lastAiFrameTime = performance.now();
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    function toggleAutoTrack() {
+      autoTrackEnabled = !autoTrackEnabled;
+      const btn = document.getElementById('btn-autotrack');
+      if (autoTrackEnabled) {
+        btn.style.background = '#10b981';
+        btn.style.borderColor = '#10b981';
+        btn.style.color = '#fff';
+        btn.textContent = '🎯 Auto-Track: ON';
+        toast('Person Auto-Tracking Activated! 🎯');
+        if (!aiEnabled) {
+          toggleAI(); // activate vision if not active
+        }
+      } else {
+        btn.style.background = '';
+        btn.style.borderColor = '';
+        btn.style.color = '';
+        btn.textContent = '🎯 Auto-Track: OFF';
+        toast('Auto-Tracking Disabled');
+      }
+    }
+
+    async function toggleAI() {
+      aiEnabled = !aiEnabled;
+      const btn = document.getElementById('btn-ai');
+      const aiCard = document.getElementById('ai-card');
+      const hudAi = document.getElementById('hud-ai');
+      const canvas = document.getElementById('detection-canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (aiEnabled) {
+        btn.style.background = '#10b981';
+        btn.style.borderColor = '#10b981';
+        btn.style.color = '#ffffff';
+        btn.textContent = '🤖 AI: ON';
+        aiCard.style.display = 'block';
+        hudAi.style.display = 'block';
+        toast('Loading Neural Detection Model...');
+
+        if (!cocoModel) {
+          try {
+            if (!window.tf) {
+              await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js');
+            }
+            if (!window.cocoSsd) {
+              await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js');
+            }
+            cocoModel = await cocoSsd.load({ base: 'mobilenet_v2' });
+            toast('AI Ready: Detecting objects & people!');
+          } catch (err) {
+            toast('Failed to load AI model');
+            console.error(err);
+            aiEnabled = false;
+            btn.textContent = '🤖 AI Detect';
+            btn.style.background = '';
+            btn.style.color = '';
+            aiCard.style.display = 'none';
+            hudAi.style.display = 'none';
+            return;
+          }
+        }
+        runDetectionLoop();
+      } else {
+        btn.style.background = '';
+        btn.style.borderColor = '';
+        btn.style.color = '';
+        btn.textContent = '🤖 AI Detect';
+        aiCard.style.display = 'none';
+        hudAi.style.display = 'none';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    async function runDetectionLoop() {
+      if (!aiEnabled || !cocoModel) return;
+      const video = document.getElementById('video-player');
+      const canvas = document.getElementById('detection-canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (video.readyState >= 2 && video.videoWidth > 0) {
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+        }
+
+        try {
+          const predictions = await cocoModel.detect(video);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          const detectedMap = {};
+
+          for (const pred of predictions) {
+            if (pred.class === 'tie') continue; // anti-tie guard
+            const [x, y, w, h] = pred.bbox;
+            const isPerson = pred.class === 'person';
+            const color = isPerson ? '#10b981' : '#3b82f6';
+
+            // Draw bounding box
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, w, h);
+
+            // Corner brackets accent
+            ctx.fillStyle = color;
+            const corner = Math.min(16, w / 4);
+            ctx.fillRect(x - 1, y - 1, corner, 3);
+            ctx.fillRect(x - 1, y - 1, 3, corner);
+            ctx.fillRect(x + w - corner + 1, y - 1, corner, 3);
+            ctx.fillRect(x + w - 2, y - 1, 3, corner);
+            ctx.fillRect(x - 1, y + h - 2, corner, 3);
+            ctx.fillRect(x - 1, y + h - corner, 3, corner);
+            ctx.fillRect(x + w - corner + 1, y + h - 2, corner, 3);
+            ctx.fillRect(x + w - 2, y + h - corner, 3, corner);
+
+            // Badge label
+            const score = Math.round(pred.score * 100);
+            const text = `${pred.class.toUpperCase()} ${score}%`;
+            ctx.font = 'bold 12px "JetBrains Mono", monospace';
+            const textWidth = ctx.measureText(text).width;
+            
+            ctx.fillRect(x, Math.max(0, y - 22), textWidth + 12, 22);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(text, x + 6, Math.max(16, y - 6));
+
+            detectedMap[pred.class] = (detectedMap[pred.class] || 0) + 1;
+          }
+
+          // --- AUTO-TRACK PERSON SERVO ---
+          if (autoTrackEnabled && !isTrackingMoving && Date.now() - lastTrackTime > 650) {
+            const persons = predictions.filter(p => p.class === 'person' && p.score > 0.55);
+            if (persons.length > 0) {
+              // Find largest person in frame (closest)
+              const target = persons.reduce((max, p) => (p.bbox[2] * p.bbox[3] > max.bbox[2] * max.bbox[3] ? p : max), persons[0]);
+              const [tx, ty, tw, th] = target.bbox;
+              const personCenterX = tx + tw / 2;
+              const personCenterY = ty + th / 2;
+              const frameCenterX = canvas.width / 2;
+              const frameCenterY = canvas.height / 2;
+
+              const deltaX = (personCenterX - frameCenterX) / frameCenterX;
+              const deltaY = (personCenterY - frameCenterY) / frameCenterY;
+
+              // Deadzone: center 25% horizontal, 30% vertical
+              let moveDir = null;
+              if (deltaX < -0.26) {
+                moveDir = 'left';
+              } else if (deltaX > 0.26) {
+                moveDir = 'right';
+              } else if (deltaY < -0.32) {
+                moveDir = 'up';
+              } else if (deltaY > 0.32) {
+                moveDir = 'down';
+              }
+
+              if (moveDir) {
+                isTrackingMoving = true;
+                lastTrackTime = Date.now();
+
+                // Draw target tracking lock box
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(tx, ty, tw, th);
+                ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
+                ctx.fillRect(tx, ty, tw, th);
+
+                const stepMag = Math.min(0.2, Math.max(0.08, Math.abs(deltaX) * 0.22));
+                fetch('/api/ptz/move', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ direction: moveDir, step: stepMag })
+                }).finally(() => {
+                  setTimeout(() => { isTrackingMoving = false; }, 450);
+                });
+              }
+            }
+          }
+
+          // Update tags UI
+          const tagsContainer = document.getElementById('detected-tags');
+          const entries = Object.entries(detectedMap);
+          if (entries.length > 0) {
+            tagsContainer.innerHTML = entries.map(([cls, count]) => {
+              const icon = cls === 'person' ? '👤' : (cls === 'cell phone' ? '📱' : (cls === 'chair' ? '🪑' : (cls === 'cup' ? '☕' : '📦')));
+              return `
+                <span style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; color: #93c5fd; font-weight: 500;">
+                  ${icon} ${cls} ×${count}
+                </span>
+              `;
+            }).join('');
+            document.getElementById('hud-ai').textContent = `AI: ${entries.map(([c, n]) => `${n} ${c}`).join(', ')}`;
+          } else {
+            tagsContainer.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">No entities in frame</span>';
+            document.getElementById('hud-ai').textContent = 'AI: SCANNING...';
+          }
+
+          // FPS counter
+          const now = performance.now();
+          const fps = Math.round(1000 / (now - lastAiFrameTime));
+          lastAiFrameTime = now;
+          document.getElementById('ai-fps').textContent = `${fps} FPS`;
+
+        } catch (e) {
+          console.error('Detection frame error:', e);
+        }
+      }
+
+      if (aiEnabled) {
+        requestAnimationFrame(runDetectionLoop);
+      }
+    }
+
+    // Init
+    startWebRTC(currentStream);
+    updateStatus();
+    loadGallery();
+    setInterval(updateStatus, 5000);
+  </script>
+</body>
+</html>
