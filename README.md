@@ -1,28 +1,28 @@
 # Tapo Studio
 
-A lightweight, low-latency WebRTC streaming and PTZ motor control dashboard for TP-Link Tapo pan/tilt cameras (such as the Tapo C200, C206, and C210).
+A lightweight, low-latency WebRTC streaming and PTZ motor control dashboard for the TP-Link Tapo C206 pan/tilt camera.
 
-Tapo Studio bypasses cloud services to provide direct local streaming, real-time motorized directional control, instant frame captures, and client-side computer vision detection without taxing the host CPU.
+Tapo Studio bypasses cloud services to provide direct local streaming, real-time motorized directional control, night vision management, instant frame captures, and hardware telemetry without taxing the host CPU.
 
 ---
 
 ## Architecture Overview
 
 1. **Streaming Backend (go2rtc)**
-   - Connects directly to the local RTSP feed of the camera.
+   - Connects directly to the local RTSP feed of the Tapo C206.
    - Forwards raw H.264 video streams directly to browser WebRTC without CPU transcoding.
    - Achieves sub-200ms glass-to-glass latency with minimal memory footprint (under 30 MB RAM).
 
 2. **Control & Telemetry Daemon (FastAPI)**
    - Interfaces with the camera over the ONVIF protocol (Profile S on port 2020).
-   - Exposes REST endpoints for relative pan/tilt translation, 180-degree flips, absolute position queries, and device telemetry.
+   - Exposes REST endpoints for relative pan/tilt translation, 180-degree flips, absolute position queries, infrared night vision switching, and device telemetry.
    - Manages snapshot persistence and local file serving.
 
-3. **Web Frontend (Vanilla JS & WebGL)**
+3. **Web Frontend (Vanilla JS)**
    - Responsive single-page application optimized for desktop and mobile browsers.
    - Interactive directional D-pad, keyboard arrow bindings, and sensitivity sliders.
-   - In-browser object and person detection powered by TensorFlow.js and MobileNet-v2 running on the client GPU via WebGL.
-   - Closed-loop visual auto-tracking servo that automatically centers the primary detected person in the frame.
+   - Night vision mode selector (Auto, IR Night, Day).
+   - Lightweight interface with zero client-side ML overhead, delivering full 30 FPS playback.
 
 ---
 
@@ -31,8 +31,8 @@ Tapo Studio bypasses cloud services to provide direct local streaming, real-time
 - **Sub-Second WebRTC Streaming**: Instant live feed with audio toggle, fullscreen support, and HD (1080p/2K) versus SD (360p) stream switching.
 - **PTZ Directional Control**: On-screen directional buttons, smooth step-size adjustments, and keyboard arrow key navigation.
 - **180-Degree Quick Flip**: Instant one-click motor inversion to check behind the camera.
-- **Client-Side AI Object Detection**: Real-time bounding boxes and confidence readouts for 80 COCO classes, executed entirely on the client browser GPU.
-- **Visual Auto-Tracking Servo**: Automatically detects the closest person in the frame and drives PTZ motor steps to keep the subject centered.
+- **Night Vision Modes**: Dedicated controls for Auto, Infrared Night Mode (850nm IR LEDs), and Day Mode via the hardware IR cut filter.
+- **Autonomous On-Device Tracking**: Leverages the Tapo C206 on-chip DSP for real-time person tracking without host or client CPU strain.
 - **Snapshot Capture & Gallery**: Instant capture from the RTSP stream saved to disk with thumbnail previews, full-size viewing, and deletion management.
 - **Hardware Telemetry**: Displays camera model, firmware version, and real-time pan/tilt vector coordinates.
 - **Low Overhead**: Operates entirely within ~100 MB of system RAM on low-power host devices (including ARM single-board computers and Android chroot environments).
@@ -43,7 +43,7 @@ Tapo Studio bypasses cloud services to provide direct local streaming, real-time
 
 - Linux host (x86_64 or aarch64/ARM64)
 - Python 3.10+
-- Network connectivity to the Tapo camera on your local subnet
+- Network connectivity to the Tapo C206 camera on your local subnet
 - Local camera account enabled via the official Tapo mobile application (`Device Settings -> Advanced Settings -> Camera Account`)
 
 ---
@@ -52,8 +52,8 @@ Tapo Studio bypasses cloud services to provide direct local streaming, real-time
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Hy4ri/tapo-web.git
-   cd tapo-web
+   git clone https://github.com/Hy4ri/tapo-studio.git
+   cd tapo-studio
    ```
 
 2. Run the setup script:
