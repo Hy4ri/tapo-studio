@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Tapo Live View</title>
+  <title>Tapo Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -410,11 +410,9 @@
       <div class="video-card">
         <div class="video-overlay">
           <div class="hud-tag" id="hud-quality">STREAM: HD</div>
-          <div class="hud-tag" id="hud-ai" style="display: none; color: var(--success);">AI: ACTIVE</div>
           <div class="hud-tag" id="hud-pos">PAN: 0.0 | TILT: 0.0</div>
         </div>
         <video id="video-player" autoplay playsinline muted></video>
-        <canvas id="detection-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 5;"></canvas>
       </div>
 
       <div class="video-controls-bar">
@@ -424,9 +422,6 @@
         </div>
 
         <div style="display: flex; gap: 8px;">
-          <button id="btn-ai" class="action-btn btn-secondary" onclick="toggleAI()" style="width: auto; padding: 6px 12px;" title="Real-time Object & Person Detection">
-            🤖 AI Detect
-          </button>
           <button class="action-btn btn-secondary" onclick="toggleAudio()" style="width: auto; padding: 6px 12px;">
             <span id="audio-icon">🔇</span>
           </button>
@@ -443,7 +438,7 @@
       <div class="card" style="margin-top: 16px;">
         <h2>Captured Snaps</h2>
         <div class="gallery-grid" id="gallery-container">
-          <p style="color: var(--text-muted); font-size: 0.8rem;">Loading gallery...</p>
+          <p style="color: var(--text-muted); font-size: 0.8rem;">No snapshots yet.</p>
         </div>
       </div>
     </div>
@@ -476,31 +471,22 @@
 
         <div style="margin-top: 14px; display: flex; gap: 8px;">
           <button class="action-btn btn-secondary" onclick="ptzFlip180()" style="font-size: 0.8rem; flex: 1;">
-            🔄 180° Flip
-          </button>
-          <button id="btn-autotrack" class="action-btn btn-secondary" onclick="toggleAutoTrack()" style="font-size: 0.8rem; flex: 1;" title="Automatically track and center on detected person">
-            🎯 Auto-Track: OFF
+            🔄 180° Quick Flip
           </button>
         </div>
       </div>
 
       <!-- Lighting & Night Vision Controls -->
       <div class="card">
-        <h2>Lighting & Night Vision</h2>
+        <h2>Night Vision Mode</h2>
         <div style="display: flex; flex-direction: column; gap: 10px;">
           <div>
-            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">Night Vision (IR Cut)</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">IR Cut Filter</span>
             <div class="segmented-control" style="width: 100%; display: flex;">
               <button id="nv-auto" class="active" onclick="setNightMode('AUTO')" style="flex: 1;">⚡ Auto</button>
               <button id="nv-on" onclick="setNightMode('ON')" style="flex: 1;">🌙 IR Night</button>
               <button id="nv-off" onclick="setNightMode('OFF')" style="flex: 1;">☀️ Day</button>
             </div>
-          </div>
-
-          <div style="margin-top: 4px;">
-            <button id="btn-spotlight" class="action-btn btn-secondary" onclick="toggleSpotlight()" style="font-size: 0.85rem;">
-              💡 Flashlight: OFF
-            </button>
           </div>
         </div>
       </div>
@@ -524,25 +510,18 @@
           <span class="telemetry-val" id="tel-tilt">0.0</span>
         </div>
         <div class="telemetry-row">
-          <span class="telemetry-label">Backend Engine</span>
-          <span class="telemetry-val" style="color: var(--success);">go2rtc WebRTC</span>
+          <span class="telemetry-label">Tracking Mode</span>
+          <span class="telemetry-val" style="color: var(--success);">Camera Hardware DSP</span>
         </div>
-      </div>
-
-      <!-- Live AI Detection Entities -->
-      <div class="card" id="ai-card" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h2 style="margin-bottom: 0;">Live Detected Entities</h2>
-          <span id="ai-fps" style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; color: var(--success); font-weight: 600;">0 FPS</span>
-        </div>
-        <div id="detected-tags" style="display: flex; flex-wrap: wrap; gap: 6px;">
-          <span style="font-size: 0.8rem; color: var(--text-muted);">Initializing neural engine...</span>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Streaming Engine</span>
+          <span class="telemetry-val" style="color: var(--accent);">go2rtc WebRTC</span>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="toast">Snapshot captured!</div>
+  <div id="toast">Action completed</div>
 
   <script>
     let currentStream = 'tapo_hd';
@@ -624,7 +603,7 @@
       }
     }
 
-    // PTZ
+    // PTZ Motor Controls
     async function ptzMove(direction) {
       try {
         const res = await fetch('/api/ptz/move', {
@@ -641,7 +620,7 @@
     }
 
     async function ptzFlip180() {
-      toast('Flipping 180° (motor in transit)...');
+      toast('Flipping 180°...');
       try {
         const res = await fetch('/api/ptz/flip180', { method: 'POST' });
         if (res.ok) {
@@ -661,7 +640,7 @@
         const res = await fetch(`/api/snapshot?src=${currentStream}`, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-          toast('📸 Snapshot saved!');
+          toast('Snapshot saved!');
           loadGallery();
         }
       } catch (e) {
@@ -675,7 +654,7 @@
         const data = await res.json();
         const container = document.getElementById('gallery-container');
         if (!data.snapshots || data.snapshots.length === 0) {
-          container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">No snapshots taken yet.</p>';
+          container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">No snapshots yet.</p>';
           return;
         }
 
@@ -713,9 +692,7 @@
       }
     }
 
-    // Night Mode & Spotlight controls
-    let spotlightState = false;
-
+    // Night Mode
     async function setNightMode(mode) {
       toast(`Setting Night Mode to ${mode}...`);
       try {
@@ -737,32 +714,6 @@
       }
     }
 
-    async function toggleSpotlight() {
-      spotlightState = !spotlightState;
-      const btn = document.getElementById('btn-spotlight');
-      toast(spotlightState ? 'Activating Flashlight...' : 'Turning off Flashlight...');
-      try {
-        const res = await fetch('/api/light/spotlight', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ state: spotlightState })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          btn.textContent = spotlightState ? '💡 Flashlight: ON' : '💡 Flashlight: OFF';
-          btn.style.background = spotlightState ? '#f59e0b' : '';
-          btn.style.color = spotlightState ? '#fff' : '';
-          toast(spotlightState ? 'Flashlight ON' : 'Flashlight OFF');
-        } else {
-          spotlightState = !spotlightState;
-          toast(data.detail || 'Flashlight command failed');
-        }
-      } catch (e) {
-        spotlightState = !spotlightState;
-        toast('Error toggling spotlight');
-      }
-    }
-
     // Keyboard navigation
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
@@ -774,235 +725,6 @@
       if (e.key === 'ArrowRight') ptzMove('right');
       if (e.key === ' ') takeSnapshot();
     });
-
-    // --- AI OBJECT & PERSON DETECTION (Original Fast WebGL Engine) ---
-    let aiEnabled = false;
-    let autoTrackEnabled = false;
-    let isTrackingMoving = false;
-    let lastTrackTime = 0;
-    let cocoModel = null;
-    let isDetecting = false;
-    let lastAiFrameTime = performance.now();
-
-    function loadScript(src) {
-      return new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = src;
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
-      });
-    }
-
-    function toggleAutoTrack() {
-      autoTrackEnabled = !autoTrackEnabled;
-      const btn = document.getElementById('btn-autotrack');
-      if (autoTrackEnabled) {
-        btn.style.background = '#10b981';
-        btn.style.borderColor = '#10b981';
-        btn.style.color = '#fff';
-        btn.textContent = '🎯 Auto-Track: ON';
-        toast('Person Auto-Tracking Activated! 🎯');
-        if (!aiEnabled) {
-          toggleAI(); // activate vision if not active
-        }
-      } else {
-        btn.style.background = '';
-        btn.style.borderColor = '';
-        btn.style.color = '';
-        btn.textContent = '🎯 Auto-Track: OFF';
-        toast('Auto-Tracking Disabled');
-      }
-    }
-
-    async function toggleAI() {
-      aiEnabled = !aiEnabled;
-      const btn = document.getElementById('btn-ai');
-      const aiCard = document.getElementById('ai-card');
-      const hudAi = document.getElementById('hud-ai');
-      const canvas = document.getElementById('detection-canvas');
-      const ctx = canvas.getContext('2d');
-
-      if (aiEnabled) {
-        btn.style.background = '#10b981';
-        btn.style.borderColor = '#10b981';
-        btn.style.color = '#ffffff';
-        btn.textContent = '🤖 AI: ON';
-        aiCard.style.display = 'block';
-        hudAi.style.display = 'block';
-        toast('Loading Neural Detection Model...');
-
-        if (!cocoModel) {
-          try {
-            if (!window.tf) {
-              await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js');
-            }
-            if (!window.cocoSsd) {
-              await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js');
-            }
-            cocoModel = await cocoSsd.load({ base: 'mobilenet_v2' });
-            toast('AI Ready: Detecting objects & people!');
-          } catch (err) {
-            toast('Failed to load AI model');
-            console.error(err);
-            aiEnabled = false;
-            btn.textContent = '🤖 AI Detect';
-            btn.style.background = '';
-            btn.style.color = '';
-            aiCard.style.display = 'none';
-            hudAi.style.display = 'none';
-            return;
-          }
-        }
-        runDetectionLoop();
-      } else {
-        btn.style.background = '';
-        btn.style.borderColor = '';
-        btn.style.color = '';
-        btn.textContent = '🤖 AI Detect';
-        aiCard.style.display = 'none';
-        hudAi.style.display = 'none';
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    }
-
-    async function runDetectionLoop() {
-      if (!aiEnabled || !cocoModel) return;
-      const video = document.getElementById('video-player');
-      const canvas = document.getElementById('detection-canvas');
-      const ctx = canvas.getContext('2d');
-
-      if (video.readyState >= 2 && video.videoWidth > 0) {
-        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-        }
-
-        try {
-          const predictions = await cocoModel.detect(video);
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-          const detectedMap = {};
-
-          for (const pred of predictions) {
-            if (pred.class === 'tie') continue; // anti-tie guard
-            const [x, y, w, h] = pred.bbox;
-            const isPerson = pred.class === 'person';
-            const color = isPerson ? '#10b981' : '#3b82f6';
-
-            // Draw bounding box
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3;
-            ctx.strokeRect(x, y, w, h);
-
-            // Corner brackets accent
-            ctx.fillStyle = color;
-            const corner = Math.min(16, w / 4);
-            ctx.fillRect(x - 1, y - 1, corner, 3);
-            ctx.fillRect(x - 1, y - 1, 3, corner);
-            ctx.fillRect(x + w - corner + 1, y - 1, corner, 3);
-            ctx.fillRect(x + w - 2, y - 1, 3, corner);
-            ctx.fillRect(x - 1, y + h - 2, corner, 3);
-            ctx.fillRect(x - 1, y + h - corner, 3, corner);
-            ctx.fillRect(x + w - corner + 1, y + h - 2, corner, 3);
-            ctx.fillRect(x + w - 2, y + h - corner, 3, corner);
-
-            // Badge label
-            const score = Math.round(pred.score * 100);
-            const text = `${pred.class.toUpperCase()} ${score}%`;
-            ctx.font = 'bold 12px "JetBrains Mono", monospace';
-            const textWidth = ctx.measureText(text).width;
-            
-            ctx.fillRect(x, Math.max(0, y - 22), textWidth + 12, 22);
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(text, x + 6, Math.max(16, y - 6));
-
-            detectedMap[pred.class] = (detectedMap[pred.class] || 0) + 1;
-          }
-
-          // --- AUTO-TRACK PERSON SERVO ---
-          if (autoTrackEnabled && !isTrackingMoving && Date.now() - lastTrackTime > 650) {
-            const persons = predictions.filter(p => p.class === 'person' && p.score > 0.55);
-            if (persons.length > 0) {
-              // Find largest person in frame (closest)
-              const target = persons.reduce((max, p) => (p.bbox[2] * p.bbox[3] > max.bbox[2] * max.bbox[3] ? p : max), persons[0]);
-              const [tx, ty, tw, th] = target.bbox;
-              const personCenterX = tx + tw / 2;
-              const personCenterY = ty + th / 2;
-              const frameCenterX = canvas.width / 2;
-              const frameCenterY = canvas.height / 2;
-
-              const deltaX = (personCenterX - frameCenterX) / frameCenterX;
-              const deltaY = (personCenterY - frameCenterY) / frameCenterY;
-
-              // Deadzone: center 25% horizontal, 30% vertical
-              let moveDir = null;
-              if (deltaX < -0.26) {
-                moveDir = 'left';
-              } else if (deltaX > 0.26) {
-                moveDir = 'right';
-              } else if (deltaY < -0.32) {
-                moveDir = 'up';
-              } else if (deltaY > 0.32) {
-                moveDir = 'down';
-              }
-
-              if (moveDir) {
-                isTrackingMoving = true;
-                lastTrackTime = Date.now();
-
-                // Draw target tracking lock box
-                ctx.strokeStyle = '#f59e0b';
-                ctx.lineWidth = 4;
-                ctx.strokeRect(tx, ty, tw, th);
-                ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
-                ctx.fillRect(tx, ty, tw, th);
-
-                const stepMag = Math.min(0.2, Math.max(0.08, Math.abs(deltaX) * 0.22));
-                fetch('/api/ptz/move', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ direction: moveDir, step: stepMag })
-                }).finally(() => {
-                  setTimeout(() => { isTrackingMoving = false; }, 450);
-                });
-              }
-            }
-          }
-
-          // Update tags UI
-          const tagsContainer = document.getElementById('detected-tags');
-          const entries = Object.entries(detectedMap);
-          if (entries.length > 0) {
-            tagsContainer.innerHTML = entries.map(([cls, count]) => {
-              const icon = cls === 'person' ? '👤' : (cls === 'cell phone' ? '📱' : (cls === 'chair' ? '🪑' : (cls === 'cup' ? '☕' : '📦')));
-              return `
-                <span style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; color: #93c5fd; font-weight: 500;">
-                  ${icon} ${cls} ×${count}
-                </span>
-              `;
-            }).join('');
-            document.getElementById('hud-ai').textContent = `AI: ${entries.map(([c, n]) => `${n} ${c}`).join(', ')}`;
-          } else {
-            tagsContainer.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">No entities in frame</span>';
-            document.getElementById('hud-ai').textContent = 'AI: SCANNING...';
-          }
-
-          // FPS counter
-          const now = performance.now();
-          const fps = Math.round(1000 / (now - lastAiFrameTime));
-          lastAiFrameTime = now;
-          document.getElementById('ai-fps').textContent = `${fps} FPS`;
-
-        } catch (e) {
-          console.error('Detection frame error:', e);
-        }
-      }
-
-      if (aiEnabled) {
-        requestAnimationFrame(runDetectionLoop);
-      }
-    }
 
     // Init
     startWebRTC(currentStream);

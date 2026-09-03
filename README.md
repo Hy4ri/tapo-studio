@@ -108,18 +108,30 @@ Start the web application:
 
 Navigate to `http://<host-ip>:8555` in any modern web browser.
 
-### Method 2: Process Manager (PM2)
+### Process Management (Unified PM2 Service)
+
+Tapo Studio manages the `go2rtc` streaming daemon automatically as an internal child process. You only need to run a single PM2 process:
 
 ```bash
-# Start go2rtc streaming service
-pm2 start ./bin/go2rtc --name tapo-stream -- -config ./config/go2rtc.yaml
+# Start the unified Tapo Studio service
+pm2 start ./start.sh --name tapo-studio
 
-# Start web interface
-pm2 start ./start.sh --name tapo-web
-
-# Save configuration
+# Save PM2 state across reboots
 pm2 save
 ```
+
+---
+
+## On-Device Hardware Tracking
+
+The Tapo C206 camera includes a dedicated internal digital signal processor (DSP) capable of autonomous motion tracking at 30 FPS without host or browser CPU usage.
+
+To enable autonomous tracking directly on the camera hardware:
+1. Open the official Tapo mobile application.
+2. Navigate to `Device Settings (gear icon) -> Detection & Alerts`.
+3. Enable `Person Detection` and `Motion Tracking`.
+
+Once enabled, the camera's internal microcontroller will autonomously steer the physical pan/tilt motors to follow moving subjects in real time. The live WebRTC stream will reflect the camera movements with zero browser latency.
 
 ---
 
