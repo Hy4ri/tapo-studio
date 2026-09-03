@@ -484,6 +484,27 @@
         </div>
       </div>
 
+      <!-- Lighting & Night Vision Controls -->
+      <div class="card">
+        <h2>Lighting & Night Vision</h2>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">Night Vision (IR Cut)</span>
+            <div class="segmented-control" style="width: 100%; display: flex;">
+              <button id="nv-auto" class="active" onclick="setNightMode('AUTO')" style="flex: 1;">⚡ Auto</button>
+              <button id="nv-on" onclick="setNightMode('ON')" style="flex: 1;">🌙 IR Night</button>
+              <button id="nv-off" onclick="setNightMode('OFF')" style="flex: 1;">☀️ Day</button>
+            </div>
+          </div>
+
+          <div style="margin-top: 4px;">
+            <button id="btn-spotlight" class="action-btn btn-secondary" onclick="toggleSpotlight()" style="font-size: 0.85rem;">
+              💡 Flashlight: OFF
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <h2>Camera Telemetry</h2>
         <div class="telemetry-row">
@@ -689,6 +710,56 @@
         }
       } catch (e) {
         console.error('Status error:', e);
+      }
+    }
+
+    // Night Mode & Spotlight controls
+    let spotlightState = false;
+
+    async function setNightMode(mode) {
+      toast(`Setting Night Mode to ${mode}...`);
+      try {
+        const res = await fetch('/api/light/night_mode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode })
+        });
+        if (res.ok) {
+          document.getElementById('nv-auto').classList.toggle('active', mode === 'AUTO');
+          document.getElementById('nv-on').classList.toggle('active', mode === 'ON');
+          document.getElementById('nv-off').classList.toggle('active', mode === 'OFF');
+          toast(`Night Mode: ${mode}`);
+        } else {
+          toast('Night Mode change failed');
+        }
+      } catch (e) {
+        toast('Failed to set night mode');
+      }
+    }
+
+    async function toggleSpotlight() {
+      spotlightState = !spotlightState;
+      const btn = document.getElementById('btn-spotlight');
+      toast(spotlightState ? 'Activating Flashlight...' : 'Turning off Flashlight...');
+      try {
+        const res = await fetch('/api/light/spotlight', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state: spotlightState })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          btn.textContent = spotlightState ? '💡 Flashlight: ON' : '💡 Flashlight: OFF';
+          btn.style.background = spotlightState ? '#f59e0b' : '';
+          btn.style.color = spotlightState ? '#fff' : '';
+          toast(spotlightState ? 'Flashlight ON' : 'Flashlight OFF');
+        } else {
+          spotlightState = !spotlightState;
+          toast(data.detail || 'Flashlight command failed');
+        }
+      } catch (e) {
+        spotlightState = !spotlightState;
+        toast('Error toggling spotlight');
       }
     }
 

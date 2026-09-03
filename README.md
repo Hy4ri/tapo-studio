@@ -153,6 +153,24 @@ pm2 save
   }
   ```
 
+### Night Vision and Lighting
+
+- **POST `/api/light/night_mode`**
+  Switches the infrared night vision mode.
+  ```json
+  {
+    "mode": "AUTO" | "ON" | "OFF"
+  }
+  ```
+
+- **POST `/api/light/spotlight`**
+  Toggles the physical white LED spotlight on or off.
+  ```json
+  {
+    "state": true | false
+  }
+  ```
+
 ### Snapshots
 
 - **POST `/api/snapshot?src=tapo_hd`**

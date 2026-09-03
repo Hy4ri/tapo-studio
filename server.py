@@ -151,6 +151,45 @@ async def ptz_absolute(pan: float = Body(..., embed=True), tilt: float = Body(..
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/light/night_mode")
+async def set_night_mode(mode: str = Body(..., embed=True)):
+    mode_upper = mode.upper()
+    if mode_upper not in ["AUTO", "ON", "OFF"]:
+        raise HTTPException(status_code=400, detail="Mode must be AUTO, ON, or OFF")
+    async with _cam_lock:
+        try:
+            if _cam is None:
+                get_ptz_service()
+            imaging = _cam.create_imaging_service()
+            media = _cam.create_media_service()
+            token = media.GetProfiles()[0].VideoSourceConfiguration.SourceToken
+            def do_set():
+                req = imaging.create_type('SetImagingSettings')
+                req.VideoSourceToken = token
+                req.ImagingSettings = {'IrCutFilter': mode_upper}
+                req.ForcePersistence = True
+                imaging.SetImagingSettings(req)
+            await asyncio.to_thread(do_set)
+            return {"success": True, "night_mode": mode_upper}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/light/spotlight")
+async def set_spotlight(state: bool = Body(..., embed=True)):
+    # Flashlight control via TP-Link API
+    async with _cam_lock:
+        try:
+            import pytapo
+            cloud_user = os.getenv("CLOUD_USER", CAM_USER)
+            cloud_pass = os.getenv("CLOUD_PASS", CAM_PASS)
+            def do_spotlight():
+                t = pytapo.Tapo(CAM_IP, cloud_user, cloud_pass)
+                return t.setForceWhitelampState(state)
+            res = await asyncio.to_thread(do_spotlight)
+            return {"success": True, "spotlight": state, "result": res}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Spotlight API: {e}")
+
 # --- SNAPSHOTS ---
 @app.post("/api/snapshot")
 async def take_snapshot(src: str = Query("tapo_hd")):
